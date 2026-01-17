@@ -62,7 +62,8 @@ This lab is **CKA-aligned** and mirrors production scenarios.
 ## 🎥 YouTube Demo
 
 📺 **Video:** *Pod Priority & Preemption Explained with Demo*  
-🔗 Link: *(https://www.youtube.com/watch?v=02cbdHB1HQk)*
+🔗 Link: Watch on Youtube<a href="https://www.youtube.com/watch?v=02cbdHB1HQk" target="_blank" rel="noopener noreferrer">
+
 
 ---
 

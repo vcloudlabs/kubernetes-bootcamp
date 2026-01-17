@@ -4,7 +4,7 @@
 Intermediate
 
 ## Estimated Time
-15–20 minutes
+20 minutes
 
 ---
 
@@ -12,42 +12,45 @@ Intermediate
 
 In this lab, you will:
 
+- Start a **resource-constrained Kubernetes cluster using Minikube**
 - Create Kubernetes **PriorityClass** objects
-- Deploy pods with different priorities
-- Simulate **resource pressure**
-- Observe **pod preemption** in action
-- Understand how the scheduler makes eviction decisions
+- Deploy a **low-priority Deployment with multiple replicas**
+- Deploy a **high-priority Pod**
+- Observe **pod preemption** under resource pressure
+- Understand how Kubernetes evicts lower-priority pods during scheduling
 
-This lab demonstrates real Kubernetes scheduling behavior under constrained resources.
+This lab mirrors real-world and CKA-style scheduling scenarios.
 
 ---
 
 ## Prerequisites
 
-- A running Kubernetes cluster (Minikube recommended)
-- kubectl configured and working
-- Cluster with **limited CPU and memory**
-
-> ⚠️ This lab works best on a resource-constrained cluster (for example: Minikube with 2 CPUs and 2–4GB memory).
+- Minikube installed
+- kubectl installed and configured
+- Virtualization support enabled
 
 ---
 
-## Step 1: Verify Node Capacity
+## Step 1: Start Minikube with Resource Constraints
+
+```bash
+minikube stop
+minikube delete
+minikube start --cpus=2 --memory=4096
+```
+
+---
+
+## Step 2: Verify Node Capacity
 
 ```bash
 kubectl get nodes
 kubectl describe node minikube
 ```
 
-Look at:
-- Capacity
-- Allocatable
-
-These values determine scheduling and preemption behavior.
-
 ---
 
-## Step 2: Create PriorityClass Objects
+## Step 3: Create PriorityClass Objects
 
 ### low-priority.yaml
 ```yaml
@@ -56,8 +59,6 @@ kind: PriorityClass
 metadata:
   name: low-priority
 value: 1000
-globalDefault: false
-description: "Low priority workloads"
 ```
 
 ### high-priority.yaml
@@ -67,55 +68,53 @@ kind: PriorityClass
 metadata:
   name: high-priority
 value: 100000
-globalDefault: false
-description: "High priority workloads"
 ```
 
-Apply:
 ```bash
 kubectl apply -f low-priority.yaml
 kubectl apply -f high-priority.yaml
 ```
 
-Verify:
-```bash
-kubectl get priorityclass
-```
-
 ---
 
-## Step 3: Deploy Low-Priority Pods
+## Step 4: Deploy Low-Priority Deployment (3 Replicas)
 
-### low-priority-pod.yaml
+### low-priority-deployment.yaml
 ```yaml
-apiVersion: v1
-kind: Pod
+apiVersion: apps/v1
+kind: Deployment
 metadata:
-  name: low-priority-pod
+  name: low-priority-deployment
 spec:
-  priorityClassName: low-priority
-  containers:
-  - name: nginx
-    image: nginx
-    resources:
-      requests:
-        cpu: "500m"
-        memory: "512Mi"
-      limits:
-        cpu: "500m"
-        memory: "512Mi"
+  replicas: 3
+  selector:
+    matchLabels:
+      app: low-priority
+  template:
+    metadata:
+      labels:
+        app: low-priority
+    spec:
+      priorityClassName: low-priority
+      containers:
+      - name: nginx
+        image: nginx
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "512Mi"
 ```
 
 ```bash
-kubectl apply -f low-priority-pod.yaml
+kubectl apply -f low-priority-deployment.yaml
 kubectl get pods
 ```
 
-Deploy multiple copies if needed to exhaust resources.
+Increase the replica counts if needed to exhaust the resource and **one of the low priority replica pod goes into pending state.**
 
 ---
 
-## Step 4: Deploy a High-Priority Pod
+## Step 5: Deploy High-Priority Pod
 
 ### high-priority-pod.yaml
 ```yaml
@@ -132,9 +131,6 @@ spec:
       requests:
         cpu: "500m"
         memory: "512Mi"
-      limits:
-        cpu: "500m"
-        memory: "512Mi"
 ```
 
 ```bash
@@ -143,52 +139,31 @@ kubectl apply -f high-priority-pod.yaml
 
 ---
 
-## Step 5: Observe Preemption
+## Step 6: Observe Preemption
 
 ```bash
 kubectl get pods -w
 ```
 
 Expected:
-- Low-priority pod(s) evicted
-- High-priority pod scheduled and running
-
-Check events:
-```bash
-kubectl describe pod high-priority-pod
-```
-
----
-
-## Key Learnings
-
-- Preemption happens only when required
-- Only lower-priority pods are evicted
-- Requests (not limits) drive scheduling
-- Priority affects scheduling order
-
----
-
-## Common Issues
-
-- No preemption → cluster has free resources
-- PriorityClass missing or typo
-- Requests too small to trigger pressure
+- One or more low-priority pods evicted
+- High-priority pod running
 
 ---
 
 ## Cleanup
 
 ```bash
-kubectl delete pod low-priority-pod high-priority-pod
+kubectl delete deployment low-priority-deployment
+kubectl delete pod high-priority-pod
 kubectl delete priorityclass low-priority high-priority
+minikube stop
 ```
 
 ---
 
-## Why This Matters for CKA
+## Why This Matters
 
-Priority & Preemption is a core scheduling concept frequently tested in real troubleshooting scenarios.
+Most real workloads run as Deployments. Preemption always happens at the **pod level**.
 
-Mastering this lab builds real scheduler intuition.
-
+Understanding this is critical for CKA and production troubleshooting.

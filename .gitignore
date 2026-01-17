@@ -1,0 +1,19 @@
+# macOS system files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+
+# macOS volume files
+.VolumeIcon.icns
+.fseventsd
+
+# Editor / IDE
+.vscode/
+.idea/
+
+# Temporary files
+*.swp
+*.tmp
+
